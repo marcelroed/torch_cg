@@ -116,8 +116,7 @@ def cg_batch(A_bmm, B, M_bmm=None, X0=None, rtol=1e-3, atol=0., maxiter=None, ve
     return X_k, info
 
 
-class CG(torch.autograd.Function):
-
+class CGOld(torch.autograd.Function):
     def __init__(self, A_bmm, M_bmm=None, rtol=1e-3, atol=0., maxiter=None, verbose=False):
         self.A_bmm = A_bmm
         self.M_bmm = M_bmm
@@ -131,6 +130,26 @@ class CG(torch.autograd.Function):
                      atol=self.atol, maxiter=self.maxiter, verbose=self.verbose)
         return X
 
+    def backward(self, dX):
+        dB, _ = cg_batch(self.A_bmm, dX, M_bmm=self.M_bmm, rtol=self.rtol,
+                      atol=self.atol, maxiter=self.maxiter, verbose=self.verbose)
+        return dB
+
+class CG(torch.nn.Module):
+    def __init__(self, A_bmm, M_bmm=None, rtol=1e-3, atol=0., maxiter=None, verbose=False):
+        super(CG, self).__init__()
+        self.A_bmm = A_bmm
+        self.M_bmm = M_bmm
+        self.rtol = rtol
+        self.atol = atol
+        self.maxiter = maxiter
+        self.verbose = verbose
+    
+    def forward(self, B, X0=None):
+        X, _ = cg_batch(self.A_bmm, B, M_bmm=self.M_bmm, X0=X0, rtol=self.rtol,
+                     atol=self.atol, maxiter=self.maxiter, verbose=self.verbose)
+        return X
+    
     def backward(self, dX):
         dB, _ = cg_batch(self.A_bmm, dX, M_bmm=self.M_bmm, rtol=self.rtol,
                       atol=self.atol, maxiter=self.maxiter, verbose=self.verbose)

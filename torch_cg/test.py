@@ -7,15 +7,15 @@ from cg_batch import CG
 import IPython as ipy
 import time
 
-torch.set_default_tensor_type(torch.DoubleTensor)
+# torch.set_default_tensor_type(torch.float64)
 
 
 def sparse_numpy_to_torch(A):
     rows, cols = A.nonzero()
     values = A.data
     indices = np.vstack((rows, cols))
-    i = torch.LongTensor(indices)
-    v = torch.DoubleTensor(values)
+    i = torch.tensor(indices, dtype=torch.long)
+    v = torch.tensor(values, dtype=torch.float32)
     return torch.sparse.DoubleTensor(i, v, A.shape)
 
 n = 500
@@ -26,17 +26,19 @@ As = [nx.laplacian_matrix(
 Ms = [sparse.diags(1. / A.diagonal(), format='csc') for A in As]
 A_bdiag = sparse.block_diag(As)
 M_bdiag = sparse.block_diag(Ms)
-Bs = [np.random.randn(n, m) for _ in range(K)]
+# Bs = [np.random.randn(n, m) for _ in range(K)]
+Bs = torch.randn(K, n, m)
 As_torch = [None] * K
 Ms_torch = [None] * K
-B_torch = torch.DoubleTensor(K, n, m).requires_grad_()
+B_torch = torch.zeros(K, n, m, requires_grad=True)
 A_bdiag_torch = sparse_numpy_to_torch(A_bdiag)
 M_bdiag_torch = sparse_numpy_to_torch(M_bdiag)
 
+with torch.no_grad():
+    B_torch[:] = Bs
 for i in range(K):
     As_torch[i] = sparse_numpy_to_torch(As[i])
     Ms_torch[i] = sparse_numpy_to_torch(Ms[i])
-    B_torch[i] = torch.tensor(Bs[i])
 
 
 def A_bmm(X):
